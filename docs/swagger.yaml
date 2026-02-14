@@ -1,0 +1,98 @@
+basePath: /
+definitions:
+  common.Result:
+    properties:
+      code:
+        type: integer
+      data: {}
+      msg:
+        type: string
+      time:
+        type: integer
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://github.com/swaggo/swag/blob/master/README_zh-CN.md
+host: 127.0.0.1:8080
+info:
+  contact: {}
+  description: Gonet框架
+  termsOfService: https://www.swagger.io/terms/
+  title: OpenAPI
+  version: "1.0"
+paths:
+  /demo/test:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 测试描述信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 发送成功
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 测试方法
+      tags:
+      - demo
+  /demo/test1:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 无需登录的接口
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 发送成功
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 无需登录的接口
+      tags:
+      - demo
+  /demo/test2:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 需要登录的接口
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 发送成功
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 需要登录的接口
+      tags:
+      - demo
+  /demo/test3:
+    get:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 需要登录且需要验证有相应组的权限
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 发送成功
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 需要登录且需要验证有相应组的权限
+      tags:
+      - demo
+securityDefinitions:
+  ApiKeyAuth:
+    description: API 认证方式：在请求头中添加 Authorization 字段，值为 Bearer + 空格 + token
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
