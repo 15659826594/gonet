@@ -57,10 +57,18 @@ func New(c *config.Config) *App {
 		Config:   c,
 		MinGoVer: "1.23",
 	}
+	return app
+}
 
+func (app *App) Run(addr ...string) {
+	_, filename, line, _ := runtime.Caller(0)
+	caller := filepath.ToSlash(strings.TrimPrefix(filepath.FromSlash(filename), filepath.FromSlash(pkg.RootPath()+string(filepath.Separator))))
+
+	address := resolveAddress(addr)
+	host := strings.Split(address, ":")
 	// 判断是否安装了项目
 	if !IsInstall() {
-		app.install()
+		app.install(address)
 		//重新加载配置
 		//viper.Reset()
 		//autoload.Load()
@@ -90,21 +98,15 @@ func New(c *config.Config) *App {
 	HTMLRender.LoadHTMLGlob("**/*.html")
 	app.Engine.HTMLRender = HTMLRender
 
-	return app
-}
-
-func (a *App) Run(addr ...string) {
-	_, filename, line, _ := runtime.Caller(0)
-	caller := filepath.ToSlash(strings.TrimPrefix(filepath.FromSlash(filename), filepath.FromSlash(pkg.RootPath()+string(filepath.Separator))))
 	//设置路由
-	route.Build(a.Engine, func(name string) (*gin.RouterGroup, string) {
+	route.Build(app.Engine, func(name string) (*gin.RouterGroup, string) {
 		modulename := strings.Split(name, pkg.DS)[1]
-		return a.Engine.Group(modulename), modulename
+		return app.Engine.Group(modulename), modulename
 	})
 	// 初始化静态资源
-	a.Engine.Static("/assets", "./public/assets")
-	a.Engine.StaticFile("/favicon.ico", "./assets/favicon.ico")
-	a.Engine.GET("swagger.json", func(c *gin.Context) {
+	app.Engine.Static("/assets", "./public/assets")
+	app.Engine.StaticFile("/favicon.ico", "./assets/favicon.ico")
+	app.Engine.GET("swagger.json", func(c *gin.Context) {
 		filePath := "./docs/swagger.json"
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Swagger file not found"})
@@ -113,17 +115,14 @@ func (a *App) Run(addr ...string) {
 		c.File(filePath)
 	})
 
-	address := resolveAddress(addr)
-	host := strings.Split(address, ":")
-
-	_ = a.Engine.SetTrustedProxies([]string{host[0]})
+	_ = app.Engine.SetTrustedProxies([]string{host[0]})
 
 	fmt.Println(fmt.Sprintf(`%s server running for the %s:%d process at:
 
 	➜  Local:   http://%s/
 	➜  Docs:    http://%s/swagger.json
 
-start gin %s...`, gin.Mode(), caller, line-1, address, address, a.Config.AppNamespace))
+start gin %s...`, gin.Mode(), caller, line-1, address, address, app.Config.AppNamespace))
 
 	logger.Info(fmt.Sprintf("HTTP Server listening at %s", host[1]))
 
@@ -131,7 +130,7 @@ start gin %s...`, gin.Mode(), caller, line-1, address, address, a.Config.AppName
 		defer db.Close()
 	}
 
-	err := a.Engine.Run(address)
+	err = app.Engine.Run(address)
 	if err != nil {
 		log.Fatalf("gin run failed: %v", err)
 	}
@@ -147,16 +146,14 @@ func IsInstall() bool {
 }
 
 // install 首次进入,启动系统安装
-func (a *App) install() {
+func (a *App) install(address string) {
 	//a.LoadHTMLFolder(pkg.INSTALL_PATH, "*.html")
-
 	action := command.Install{
 		MinGoVersion: a.MinGoVer,
 	}.Index
 
 	// 注册安装路由
-	a.Engine.GET("/install", action)
-	a.Engine.POST("/install", action)
+	a.Engine.Any("/install", action)
 
 	a.Engine.NoRoute(func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/install")
@@ -167,7 +164,7 @@ func (a *App) install() {
 
 	// 创建HTTP服务器实例
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", viper.GetString("APP_HOSTNAME"), viper.GetInt("APP_HOSTPORT")),
+		Addr:    address,
 		Handler: a.Engine,
 	}
 
@@ -220,6 +217,7 @@ func scopeFuncMap(name string, fm template.FuncMap) (string, template.FuncMap) {
 	return name, fm
 }
 
+// 入口地址
 func resolveAddress(addr []string) string {
 	host := viper.GetString("APP_HOSTNAME")
 	if host == "" {
