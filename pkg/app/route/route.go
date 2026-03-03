@@ -33,8 +33,12 @@ type Action struct {
 	HandlerFunc gin.HandlerFunc
 }
 
-type IController interface {
-	BeforeAction() []gin.HandlerFunc
+type IInitialize interface {
+	Initialize() gin.HandlerFunc
+}
+
+type IBeforeAction interface {
+	BeforeAction() gin.HandlerFunc
 }
 
 func Register(Struct any) {
@@ -53,9 +57,10 @@ func Register(Struct any) {
 	relPath, _ := filepath.Rel(pkg.RootPath(), file)
 
 	controller := Controller{
-		File:   relPath,
-		Name:   t.Name(),
-		Method: []string{http.MethodGet},
+		File:         relPath,
+		Name:         t.Name(),
+		Method:       []string{http.MethodGet},
+		HandlersFunc: []gin.HandlerFunc{},
 	}
 
 	props := utils.GetStructProperty(Struct, "Alias", "Method", "NoNeedLogin", "NoNeedRight")
@@ -81,8 +86,12 @@ func Register(Struct any) {
 		controller.NoNeedRight, _ = noNeedRightAny.([]string)
 	}
 
-	if beforeHandlers, ok := Struct.(IController); ok {
-		controller.HandlersFunc = beforeHandlers.BeforeAction()
+	if initHandlers, ok := Struct.(IInitialize); ok {
+		controller.HandlersFunc = append(controller.HandlersFunc, initHandlers.Initialize())
+	}
+
+	if beforeHandlers, ok := Struct.(IBeforeAction); ok {
+		controller.HandlersFunc = append(controller.HandlersFunc, beforeHandlers.BeforeAction())
 	}
 
 	for name, method := range utils.GetStructMethods(Struct) {

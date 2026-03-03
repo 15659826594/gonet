@@ -9,7 +9,6 @@ import (
 	"gonet/pkg"
 	"gonet/pkg/app/route"
 	"gonet/pkg/config"
-	"gonet/pkg/database"
 	"gonet/pkg/i18n"
 	"gonet/pkg/logger"
 	"gonet/pkg/middleware"
@@ -60,7 +59,7 @@ func New(c *config.Config) *App {
 	return app
 }
 
-func (app *App) Run(addr ...string) {
+func (a *App) Run(addr ...string) {
 	_, filename, line, _ := runtime.Caller(0)
 	caller := filepath.ToSlash(strings.TrimPrefix(filepath.FromSlash(filename), filepath.FromSlash(pkg.RootPath()+string(filepath.Separator))))
 
@@ -68,45 +67,32 @@ func (app *App) Run(addr ...string) {
 	host := strings.Split(address, ":")
 	// 判断是否安装了项目
 	if !IsInstall() {
-		app.install(address)
-		//重新加载配置
-		//viper.Reset()
-		//autoload.Load()
-		//_ = config.SetGlobalConfigFile(pkg.CONF_PATH + "config.yaml")
-		//app.Config = config.Viper()
+		a.install(address)
 	}
 
-	app.Engine.Use(app.Config.ExceptionHandle(), middleware.ResponseHandler(), middleware.CorsMiddleware())
-
-	dbViper, err := config.SetConfigFile("database", "pkg/database/config.yaml")
-	if err != nil {
-		log.Fatalf("Failed to load database configuration: %v", err)
-	}
-
-	// 初始化gorm
-	database.Gorm(new(database.Database).Viper(dbViper))
+	a.Engine.Use(a.Config.ExceptionHandle(), middleware.ResponseHandler(), middleware.CorsMiddleware())
 
 	//设置html模板
 	HTMLRender := multi.Render(
 		gin.IsDebugging(),
 		multi.WithPrefix("[GIN-debug] "),
-		multi.WithReplaces(app.Config.ViewReplaceStr),
-		multi.WithDelims(app.Config.Template.Delims()),
+		multi.WithReplaces(a.Config.ViewReplaceStr),
+		multi.WithDelims(a.Config.Template.Delims()),
 		multi.WithFuncMap(funcMap),
 	)
 	HTMLRender.SetScopeFuncMap(scopeFuncMap)
 	HTMLRender.LoadHTMLGlob("**/*.html")
-	app.Engine.HTMLRender = HTMLRender
+	a.Engine.HTMLRender = HTMLRender
 
 	//设置路由
-	route.Build(app.Engine, func(name string) (*gin.RouterGroup, string) {
+	route.Build(a.Engine, func(name string) (*gin.RouterGroup, string) {
 		modulename := strings.Split(name, pkg.DS)[1]
-		return app.Engine.Group(modulename), modulename
+		return a.Engine.Group(modulename), modulename
 	})
 	// 初始化静态资源
-	app.Engine.Static("/assets", "./public/assets")
-	app.Engine.StaticFile("/favicon.ico", "./assets/favicon.ico")
-	app.Engine.GET("swagger.json", func(c *gin.Context) {
+	a.Engine.Static("/assets", "./public/assets")
+	a.Engine.StaticFile("/favicon.ico", "./assets/favicon.ico")
+	a.Engine.GET("swagger.json", func(c *gin.Context) {
 		filePath := "./docs/swagger.json"
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Swagger file not found"})
@@ -115,25 +101,18 @@ func (app *App) Run(addr ...string) {
 		c.File(filePath)
 	})
 
-	_ = app.Engine.SetTrustedProxies([]string{host[0]})
+	_ = a.Engine.SetTrustedProxies([]string{host[0]})
 
 	fmt.Println(fmt.Sprintf(`%s server running for the %s:%d process at:
 
 	➜  Local:   http://%s/
 	➜  Docs:    http://%s/swagger.json
 
-start gin %s...`, gin.Mode(), caller, line-1, address, address, app.Config.AppNamespace))
+start gin %s...`, gin.Mode(), caller, line-1, address, address, a.Config.AppNamespace))
 
 	logger.Info(fmt.Sprintf("HTTP Server listening at %s", host[1]))
 
-	if db, err := database.Gorm().DB(); err == nil {
-		defer db.Close()
-	}
-
-	err = app.Engine.Run(address)
-	if err != nil {
-		log.Fatalf("gin run failed: %v", err)
-	}
+	a.Engine.Run(address)
 }
 
 // IsInstall 判断是否安装过了
@@ -147,13 +126,10 @@ func IsInstall() bool {
 
 // install 首次进入,启动系统安装
 func (a *App) install(address string) {
-	//a.LoadHTMLFolder(pkg.INSTALL_PATH, "*.html")
-	action := command.Install{
-		MinGoVersion: a.MinGoVer,
-	}.Index
-
+	// 加载模板
+	a.Engine.LoadHTMLFiles(pkg.INSTALL_PATH + "install.html")
 	// 注册安装路由
-	a.Engine.Any("/install", action)
+	a.Engine.Any("/install", command.Install{MinGoVersion: a.MinGoVer}.Index)
 
 	a.Engine.NoRoute(func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/install")

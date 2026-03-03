@@ -1,15 +1,19 @@
 package main
 
 import (
+	"fmt"
 	_ "gonet/internal/index/controller"
 	"gonet/pkg"
 	"gonet/pkg/app"
 	_ "gonet/pkg/app/autoload"
 	"gonet/pkg/config"
+	"gonet/pkg/database"
 	_ "gonet/pkg/i18n"
 	"gonet/pkg/logger"
 	"gonet/pkg/logger/zap"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // @title OpenAPI
@@ -28,6 +32,9 @@ import (
 // @name Authorization
 // @description API 认证方式：在请求头中添加 Authorization 字段，值为 Bearer + 空格 + token
 func main() {
+	defer database.Close()
+	id, _ := uuid.NewV7()
+	fmt.Println(id)
 	// 加载配置
 	_ = config.SetGlobalConfigFile("pkg/config/config.yaml")
 	cfgInst := config.Viper()

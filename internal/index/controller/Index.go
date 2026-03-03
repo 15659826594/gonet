@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"gonet/internal/common/controller"
 	"gonet/pkg/app/route"
 	Config "gonet/pkg/config"
 	"net/http"
@@ -16,13 +17,14 @@ func init() {
 }
 
 type Index struct {
+	controller.Frontend
 	NoNeedLogin []string
 	NoNeedRight []string
 }
 
-//func (r *Index) BeforeAction() []gin.HandlerFunc {
-//	return []gin.HandlerFunc{func(c *gin.Context) {}}
-//}
+func (r *Index) BeforeAction() gin.HandlerFunc {
+	return func(c *gin.Context) {}
+}
 
 func (r *Index) Index() (gin.HandlerFunc, []string, []string) {
 	return func(c *gin.Context) {

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"gonet/internal/common/controller"
 	"gonet/pkg/app/route"
 	Config "gonet/pkg/config"
 	"gonet/pkg/i18n"
@@ -19,12 +20,13 @@ func init() {
 }
 
 type User struct {
+	controller.Frontend
 	NoNeedLogin []string
 	NoNeedRight []string
 }
 
-func (u User) BeforeAction() []gin.HandlerFunc {
-	return []gin.HandlerFunc{func(c *gin.Context) {
+func (u User) BeforeAction() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		tpl := template.NewTemplate(c)
 		siteViper, _ := Config.Get("site")
 		uploadViper, _ := Config.Get("upload")
@@ -38,6 +40,8 @@ func (u User) BeforeAction() []gin.HandlerFunc {
 				site[v] = siteViper.GetString(v)
 			}
 		}
+
+		fmt.Println("我是BeforeAction")
 
 		config := map[string]any{
 			"app_debug":      gin.IsDebugging(),
@@ -55,7 +59,7 @@ func (u User) BeforeAction() []gin.HandlerFunc {
 		tpl.Assign("config", config)
 
 		c.Set("Think", tpl)
-	}}
+	}
 }
 
 func (u User) Index(c *gin.Context) {

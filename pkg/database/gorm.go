@@ -24,6 +24,13 @@ var (
 
 func Gorm(configs ...*Database) *gorm.DB {
 	once.Do(func() {
+		//dbViper, err := config.SetConfigFile("database", "pkg/database/config.yaml")
+		//if err != nil {
+		//	log.Fatalf("Failed to load database configuration: %v", err)
+		//}
+
+		// 初始化gorm
+		//database.Gorm(new(database.Database).Viper(dbViper))
 		var err error
 		if len(configs) < 1 {
 			log.Fatalf("database initialization failed: %v", errors.New("configuration is required"))
@@ -97,4 +104,12 @@ func getLifetime(db *sql.DB) int {
 // GetTablePrefix 获取当前数据库连接的表前缀
 func GetTablePrefix() string {
 	return prefix
+}
+
+func Close() {
+	if instance != nil {
+		if db, err := instance.DB(); err == nil {
+			db.Close()
+		}
+	}
 }
