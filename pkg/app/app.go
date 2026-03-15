@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -52,7 +53,7 @@ func New(c *config.Config) *App {
 	gin.SetMode(c.Mode())
 
 	app := &App{
-		Engine:   gin.Default(),
+		Engine:   gin.New(),
 		Config:   c,
 		MinGoVer: "1.23",
 	}
@@ -209,5 +210,15 @@ func resolveAddress(addr []string) string {
 		return addr[0]
 	default:
 		panic("too many parameters")
+	}
+}
+
+// AutoMode 根据启动模式
+//
+//	go run 则是 debug 模式
+//	go build 则是 release 模式
+func AutoMode() {
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Path != "" {
+		os.Setenv("APP_ENV", "release")
 	}
 }

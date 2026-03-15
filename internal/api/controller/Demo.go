@@ -1,15 +1,24 @@
 package controller
 
 import (
-	. "gonet/internal/common"
+	"gonet/internal/common/controller"
+	"gonet/pkg/app/route"
 
 	"github.com/gin-gonic/gin"
 )
+
+func init() {
+	route.Register(&Demo{
+		NoNeedLogin: []string{"test", "test1"},
+		NoNeedRight: []string{"test2"},
+	})
+}
 
 /*Demo
  * 示例接口
  */
 type Demo struct {
+	controller.Api
 	//如果$noNeedLogin为空表示所有接口都需要登录才能请求
 	//如果$noNeedRight为空表示所有接口都需要验证权限才能请求
 	//如果接口已经设置无需登录,那也就无需鉴权了
@@ -29,8 +38,8 @@ type Demo struct {
 // @Success 200 {object} Result "发送成功"
 // @Router /demo/test [post]
 // @Security ApiKeyAuth
-func (Demo) Test(c *gin.Context) {
-	Response(Success("返回成功"))
+func (t Demo) Test(c *gin.Context) {
+	t.Success(c, "返回成功")
 }
 
 // Test1
@@ -42,10 +51,10 @@ func (Demo) Test(c *gin.Context) {
 // @Success 200 {object} Result "发送成功"
 // @Router /demo/test1 [post]
 // @Security ApiKeyAuth
-func (Demo) Test1(c *gin.Context) {
-	Response(Success("返回成功", gin.H{
+func (t Demo) Test1(c *gin.Context) {
+	t.Success(c, "返回成功", gin.H{
 		"action": "test1",
-	}))
+	})
 }
 
 // Test2
@@ -57,10 +66,10 @@ func (Demo) Test1(c *gin.Context) {
 // @Success 200 {object} Result "发送成功"
 // @Router /demo/test2 [post]
 // @Security ApiKeyAuth
-func (Demo) Test2(c *gin.Context) {
-	Response(Success("返回成功", gin.H{
+func (t Demo) Test2(c *gin.Context) {
+	t.Success(c, "返回成功", gin.H{
 		"action": "test2",
-	}))
+	})
 }
 
 // Test3
@@ -72,8 +81,8 @@ func (Demo) Test2(c *gin.Context) {
 // @Success 200 {object} Result "发送成功"
 // @Router /demo/test3 [get]
 // @Security ApiKeyAuth
-func (Demo) Test3(c *gin.Context) {
-	Response(Success("返回成功", gin.H{
+func (t Demo) Test3(c *gin.Context) {
+	t.Success(c, "返回成功", gin.H{
 		"action": "test3",
-	}))
+	})
 }

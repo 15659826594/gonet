@@ -3,6 +3,7 @@ package utils
 import (
 	"reflect"
 	"slices"
+	"unsafe"
 )
 
 // IsNil 检查给定的值是否为nil
@@ -159,4 +160,15 @@ func SnakeCase(s string, args ...bool) string {
 		}
 	}
 	return string(buf)
+}
+
+// Clear 安全的清零操作（默认推荐）
+func Clear[T any](ptr *T) {
+	var zero T
+	*ptr = zero
+}
+
+// ClearUnsafe 使用 unsafe 的快速清零操作（性能优先）
+func ClearUnsafe[T any](ptr *T) {
+	clear((*[1]T)(unsafe.Pointer(ptr))[:])
 }

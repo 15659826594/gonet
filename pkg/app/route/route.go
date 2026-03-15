@@ -9,8 +9,10 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var controllers []Controller
@@ -86,12 +88,12 @@ func Register(Struct any) {
 		controller.NoNeedRight, _ = noNeedRightAny.([]string)
 	}
 
-	if initHandlers, ok := Struct.(IInitialize); ok {
-		controller.HandlersFunc = append(controller.HandlersFunc, initHandlers.Initialize())
+	if handler, ok := Struct.(IInitialize); ok {
+		controller.HandlersFunc = append(controller.HandlersFunc, handler.Initialize())
 	}
 
-	if beforeHandlers, ok := Struct.(IBeforeAction); ok {
-		controller.HandlersFunc = append(controller.HandlersFunc, beforeHandlers.BeforeAction())
+	if handler, ok := Struct.(IBeforeAction); ok {
+		controller.HandlersFunc = append(controller.HandlersFunc, handler.BeforeAction())
 	}
 
 	for name, method := range utils.GetStructMethods(Struct) {
@@ -133,9 +135,15 @@ func Build(e *gin.Engine, moduleGroup func(name string) (*gin.RouterGroup, strin
 				for _, path := range action.Path {
 					path = filepath.ToSlash(utils.CaseSnake(path))
 					clonedChains := []gin.HandlerFunc{func(c *gin.Context) {
+						c.Set("startTime", time.Now().UnixMilli())
+						traceId, _ := uuid.NewV7()
+						c.Set("traceId", traceId)
+						c.Writer.Header().Set("X-Trace-Id", traceId.String())
 						c.Set("modulename", utils.CaseSnake(modulename))
 						c.Set("controllername", utils.CaseSnake(controller.Name))
 						c.Set("actionname", utils.CaseSnake(action.Name))
+						c.Set("noNeedLogin", controller.NoNeedLogin)
+						c.Set("noNeedRight", controller.NoNeedRight)
 						c.Set("url", fmt.Sprintf("%s/%s/%s", c.GetString("modulename"), c.GetString("controllername"), c.GetString("actionname")))
 					}}
 					clonedChains = append(clonedChains, chains...)
