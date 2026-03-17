@@ -15,3 +15,22 @@ type Config struct {
 	Extend  string `gorm:"column:extend;size:255;comment:扩展属性"`
 	Setting string `gorm:"column:setting;size:255;comment:配置"`
 }
+
+func (t *Config) Upload() map[string]any {
+	upload := map[string]any{
+		"cdnurl":     "",
+		"uploadurl":  "",
+		"bucket":     "",
+		"maxsize":    "",
+		"mimetype":   "",
+		"chunking":   "",
+		"chunksize":  "",
+		"savekey":    "",
+		"multipart":  "",
+		"multiple":   "",
+		"fullmode":   "",
+		"thumbstyle": "",
+		"storage":    "",
+	}
+	return upload
+}

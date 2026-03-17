@@ -8,7 +8,6 @@ import (
 )
 
 type View struct {
-	*gin.Context
 }
 
 // Assign 模板变量赋值
@@ -21,18 +20,23 @@ type View struct {
 //
 //	*View
 func (t *View) Assign(c *gin.Context, name any, value ...any) *View {
+	sm := c.GetStringMap("__data__")
+	if sm == nil {
+		sm = map[string]any{}
+	}
 	switch v := name.(type) {
 	case map[string]any:
 		for k, val := range v {
-			c.Set(k, val)
+			sm[k] = val
 		}
 	case string:
 		var val any
 		if len(value) > 0 {
 			val = value[0]
 		}
-		c.Set(v, val)
+		sm[v] = val
 	}
+	c.Set("__data__", sm)
 	return t
 }
 
@@ -47,21 +51,31 @@ func (t *View) Assign(c *gin.Context, name any, value ...any) *View {
 //	*View
 func (t *View) Fetch(c *gin.Context, args ...any) {
 	template := ""
-	obj := map[string]any{}
+	obj := c.GetStringMap("__data__")
+
+	// 解析模板参数
 	if len(args) > 0 {
 		if templ, ok := args[0].(string); ok {
 			template = templ
 		}
 	}
+	// 自动生成模板路径
 	if template == "" {
 		modulename, _ := c.Get("modulename")
 		controllername, _ := c.Get("controllername")
 		actionname, _ := c.Get("actionname")
 		template = fmt.Sprintf("%s/view/%s/%s.html", modulename, controllername, actionname)
 	}
+	// 合并额外传入的数据
 	if len(args) > 1 {
 		if o, ok := args[1].(map[string]any); ok {
-			obj = o
+			if obj != nil {
+				for k, v := range o {
+					obj[k] = v // 额外的数据会覆盖或补充 __data__ 中的数据
+				}
+			} else {
+				obj = o
+			}
 		}
 	}
 	c.HTML(http.StatusOK, template, obj)

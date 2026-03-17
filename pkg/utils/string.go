@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"golang.org/x/text/language"
 )
 
 // TrimExt 移除文件后缀名
@@ -41,12 +39,4 @@ func Substr(str string, start uint, length int) string {
 		end = len(str)
 	}
 	return str[start:end]
-}
-
-// Langset 获取当前的语言
-func Langset(header string) language.Tag {
-	tags, _, _ := language.ParseAcceptLanguage(header)
-	matcher := language.NewMatcher(tags)
-	matched, _, _ := matcher.Match()
-	return matched
 }

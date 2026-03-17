@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -30,8 +31,8 @@ func (t *Api) Initialize() gin.HandlerFunc {
 		controllername := c.GetString("controllername")
 		actionname := c.GetString("actionname")
 
-		//getToken
-		token := getToken(c)
+		//token
+		token := token(c)
 
 		path := strings.ReplaceAll(controllername, ".", "/") + "/" + actionname
 
@@ -59,23 +60,6 @@ func (t *Api) Initialize() gin.HandlerFunc {
 			}
 		}
 		fmt.Println(fmt.Sprintf("token是%s", token))
-
-		//view.Assign("user", auth.GetUser())
-		//
-		//config := map[string]any{
-		//	"app_debug":      gin.IsDebugging(),
-		//	"site":           site,
-		//	"upload":         uploadViper.AllSettings(),
-		//	"modulename":     modulename,
-		//	"controllername": controllername,
-		//	"actionname":     actionname,
-		//	"jsname":         fmt.Sprintf("frontend/%s", controllername),
-		//	"moduleurl":      fmt.Sprintf("/%s", modulename),
-		//	"language":       utils.Langset(c.Request.Header.Get("Accept-Language")),
-		//}
-		//
-		//view.Assign("site", siteViper.AllSettings())
-		//view.Assign("config", config)
 	}
 }
 
@@ -218,7 +202,7 @@ func ResponseCreate(c *gin.Context, result map[string]any, t string, code *int, 
 
 // ... existing code ...
 
-// getToken 从请求中获取 token
+// token 从请求中获取 token
 // 优先级顺序：
 // 1. Authorization Header (Bearer 格式)
 // 2. HTTP_TOKEN Header
@@ -231,7 +215,7 @@ func ResponseCreate(c *gin.Context, result map[string]any, t string, code *int, 
 //
 // 返回值:
 //   - string: token 值，如果未找到则返回空字符串
-func getToken(c *gin.Context) string {
+func token(c *gin.Context) string {
 	var token string
 
 	// 1. 从 Authorization Header 获取 Bearer Token
@@ -264,4 +248,11 @@ func getToken(c *gin.Context) string {
 	// 5. 从 Cookie 获取
 	token, _ = c.Cookie("token")
 	return token
+}
+
+func langset(c *gin.Context) language.Tag {
+	tags, _, _ := language.ParseAcceptLanguage(c.Request.Header.Get("Accept-Language"))
+	matcher := language.NewMatcher(tags)
+	matched, _, _ := matcher.Match()
+	return matched
 }
