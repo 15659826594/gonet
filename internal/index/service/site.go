@@ -1,8 +1,8 @@
 package service
 
 import (
-	"gonet/internal/index/model/dto"
-	"gonet/pkg/database"
+	"gota/internal/index/model/dto"
+	"gota/pkg/database"
 )
 
 type Site struct{}

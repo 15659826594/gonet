@@ -1,7 +1,7 @@
 package think
 
 import (
-	"gonet/pkg/library/traits/controller"
+	"gota/pkg/library/traits/controller"
 )
 
 type Controller struct {

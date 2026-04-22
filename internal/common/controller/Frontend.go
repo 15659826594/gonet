@@ -2,13 +2,16 @@ package controller
 
 import (
 	"fmt"
-	"gonet/internal/common/library/Auth"
-	"gonet/internal/common/model"
-	Config "gonet/pkg/config"
-	"gonet/pkg/library/think"
+	"gota/internal/common/library/Auth"
+	"gota/internal/common/model"
+	Config "gota/pkg/config"
+	"gota/pkg/i18n"
+	"gota/pkg/library/think"
+	"gota/pkg/utils"
 	"regexp"
 	"strings"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,24 +25,10 @@ func (t Frontend) Initialize() gin.HandlerFunc {
 		controllername := c.GetString("controllername")
 		actionname := c.GetString("actionname")
 
-		//siteViper, _ := Config.Get("site")
-		//uploadViper, _ := Config.Get("upload")
-		//
-		//site := map[string]any{}
-		//for _, v := range []string{"name", "cdnurl", "version", "timezone", "languages"} {
-		//	switch v {
-		//	case "languages":
-		//		site[v] = siteViper.GetStringMapString(v)
-		//	default:
-		//		site[v] = siteViper.GetString(v)
-		//	}
-		//}
-		//
-		auth := Auth.Instance()
-		c.Set("auth", auth)
+		auth := Auth.Instance(c)
 
 		// token
-		token := token(c)
+		token := parseToken(c)
 
 		path := strings.ReplaceAll(controllername, ".", "/") + "/" + actionname
 
@@ -50,8 +39,8 @@ func (t Frontend) Initialize() gin.HandlerFunc {
 			//初始化
 			auth.Init(token)
 			//检测是否登录
-			if auth.IsLogin() {
-				t.Error(c, "Please login first", "index/user/login")
+			if !auth.IsLogin() {
+				t.Error(c, "Please login first", "/index/user/login")
 			}
 			// 判断是否需要验证权限
 			if !auth.Match(c.GetStringSlice("noNeedRight")) {
@@ -94,6 +83,26 @@ func (t Frontend) Initialize() gin.HandlerFunc {
 		t.View.Assign(c, "site", site.AllSettings())
 		t.View.Assign(c, "config", config)
 	}
+}
+
+func (t Frontend) T(c *gin.Context, messageID string) string {
+	return i18n.T(c.GetString("url"), messageID)
+}
+
+// Token 生成请求令牌
+func (t Frontend) Token(c *gin.Context, args ...string) string {
+	name := "__token__"
+	if len(args) > 0 {
+		name = args[0]
+	}
+	token := utils.Md5(name)
+	if c.GetHeader("X-Requested-With") == "XMLHttpRequest" {
+		c.Header(name, token)
+	}
+	session := sessions.Default(c)
+	session.Set(name, token)
+	_ = session.Save()
+	return token
 }
 
 func sliceFlip[T comparable](s []T) map[T]int {

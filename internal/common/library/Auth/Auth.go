@@ -4,23 +4,37 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
+	"gota/internal/common/library"
+	UserService "gota/internal/common/service/User"
 	"path/filepath"
 	"runtime"
-	"sync"
+	"slices"
+	"strings"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 )
 
 var (
-	instance *Auth
-	once     sync.Once
+	enforcer *casbin.Enforcer
 )
+
+func init() {
+	_, filename, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(filename)
+	var err error
+	ce, err := casbin.NewEnforcer(filepath.Join(dir, "model.pml"), filepath.Join(dir, "policy.csv"))
+	if err != nil {
+		panic(err)
+		return
+	}
+	enforcer = ce
+}
 
 type Auth struct {
 	*gin.Context
 	*casbin.Enforcer
-	error   error
+	error   string
 	logined bool
 	user    any
 	token   string
@@ -34,22 +48,20 @@ type Auth struct {
 	allowFields []string
 }
 
-func Instance() *Auth {
-	once.Do(func() {
-		_, filename, _, _ := runtime.Caller(0)
-		dir := filepath.Dir(filename)
-		var err error
-		enforcer, err := casbin.NewEnforcer(filepath.Join(dir, "model.pml"), filepath.Join(dir, "policy.csv"))
-		if err != nil {
-			panic(err)
-			return
+func Instance(c *gin.Context) *Auth {
+	if auth, ok := c.Get("__auth__"); ok {
+		if a, ok := auth.(*Auth); ok {
+			return a
 		}
-		instance = &Auth{
-			Enforcer:    enforcer,
-			allowFields: []string{"id", "username", "nickname", "mobile", "avatar", "score"},
-		}
-	})
-	return instance
+	}
+
+	auth := &Auth{
+		Context:     c,
+		Enforcer:    enforcer,
+		allowFields: []string{"id", "username", "nickname", "mobile", "avatar", "score"},
+	}
+	c.Set("__auth__", auth)
+	return auth
 }
 
 // GetUser 获取User模型
@@ -69,10 +81,36 @@ func (t *Auth) Init(token string) bool {
 	if t.logined {
 		return true
 	}
-	if t.error != nil {
+	if t.error != "" {
 		return false
 	}
-	return true
+	data := library.Get(token)
+	if data == nil {
+		return false
+	}
+	userId := data["user_id"].(uint)
+	if userId > 0 {
+		user := UserService.GetById(userId)
+		if user == nil {
+			t.SetError("Account not exist")
+			return false
+		}
+		if user.Status != "normal" {
+			t.SetError("Account is locked")
+			return false
+		}
+		t.user = user
+		t.logined = true
+		t.token = token
+
+		//初始化成功的事件
+		//Hook::listen("user_init_successed", $this->_user)
+
+		return true
+	} else {
+		t.SetError("You are not logged in")
+		return false
+	}
 }
 
 // Register 注册用户
@@ -271,6 +309,20 @@ func (t *Auth) GetEncryptPassword(password, salt string) string {
 //	bool
 
 func (t *Auth) Match(arr []string) bool {
+	if len(arr) == 0 {
+		return false
+	}
+	tmp := make([]string, len(arr))
+	for _, item := range arr {
+		tmp = append(tmp, strings.ToLower(item))
+	}
+	arr = tmp
+	// 是否存在
+	if slices.Contains(arr, strings.ToLower(t.Context.GetString("actionname"))) || slices.Contains(arr, "*") {
+		return true
+	}
+
+	// 没找到匹配
 	return false
 }
 
@@ -305,7 +357,7 @@ func (t *Auth) Render(datalist any, fields []string, fieldkey string, renderkey 
 //
 //	err: 错误信息
 func (t *Auth) SetError(err string) *Auth {
-	t.error = errors.New(err)
+	t.error = err
 	return t
 }
 
@@ -314,5 +366,5 @@ func (t *Auth) SetError(err string) *Auth {
 //
 //	error
 func (t *Auth) GetError() error {
-	return t.error
+	return errors.New(t.error)
 }

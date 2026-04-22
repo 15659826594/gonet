@@ -2,8 +2,8 @@ package controller
 
 import (
 	"fmt"
-	"gonet/internal/common/library/Auth"
-	"gonet/pkg/exception"
+	"gota/internal/common/library/Auth"
+	"gota/pkg/exception"
 	"strings"
 	"time"
 
@@ -24,15 +24,14 @@ type Api struct {
 
 func (t *Api) Initialize() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		auth := Auth.Instance()
-		c.Set("auth", auth)
+		auth := Auth.Instance(c)
 
 		modulename := c.GetString("modulename")
 		controllername := c.GetString("controllername")
 		actionname := c.GetString("actionname")
 
-		//token
-		token := token(c)
+		//parseToken
+		token := parseToken(c)
 
 		path := strings.ReplaceAll(controllername, ".", "/") + "/" + actionname
 
@@ -202,20 +201,20 @@ func ResponseCreate(c *gin.Context, result map[string]any, t string, code *int, 
 
 // ... existing code ...
 
-// token 从请求中获取 token
+// parseToken 从请求中获取 parseToken
 // 优先级顺序：
 // 1. Authorization Header (Bearer 格式)
 // 2. HTTP_TOKEN Header
-// 3. URL 查询参数 token
-// 4. POST 表单参数 token
-// 5. Cookie 中的 token
+// 3. URL 查询参数 parseToken
+// 4. POST 表单参数 parseToken
+// 5. Cookie 中的 parseToken
 //
 // 参数:
 //   - c: gin.Context 上下文对象
 //
 // 返回值:
-//   - string: token 值，如果未找到则返回空字符串
-func token(c *gin.Context) string {
+//   - string: parseToken 值，如果未找到则返回空字符串
+func parseToken(c *gin.Context) string {
 	var token string
 
 	// 1. 从 Authorization Header 获取 Bearer Token
@@ -234,19 +233,19 @@ func token(c *gin.Context) string {
 	}
 
 	// 3. 从 URL 查询参数获取
-	token = c.Query("token")
+	token = c.Query("parseToken")
 	if token != "" {
 		return token
 	}
 
 	// 4. 从 POST 表单获取
-	token = c.PostForm("token")
+	token = c.PostForm("parseToken")
 	if token != "" {
 		return token
 	}
 
 	// 5. 从 Cookie 获取
-	token, _ = c.Cookie("token")
+	token, _ = c.Cookie("parseToken")
 	return token
 }
 

@@ -1,29 +1,50 @@
 package controller
 
 import (
-	"gonet/pkg/exception"
+	Config "gota/pkg/config"
+	"gota/pkg/exception"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
+)
+
+const (
+	ResponseTypeJSON   = "json"
+	ResponseTypeXML    = "xml"
+	ResponseTypeJSONP  = "jsonp"
+	DefaultCodeSuccess = 1
+	DefaultCodeError   = 0
 )
 
 type Jump struct {
 }
 
 type Result struct {
-	Code       int            `json:"code"`
-	Msg        string         `json:"msg"`
-	Time       int64          `json:"time"`
-	CostTime   int64          `json:"costTime,omitempty"`
-	Data       any            `json:"data"`
-	Statuscode int            `json:"-"`
-	Type       string         `json:"-"`
-	Header     map[string]any `json:"-"`
+	Code   *int              `json:"code"`
+	Msg    string            `json:"msg"`
+	Data   any               `json:"data"`
+	Url    string            `json:"url"`
+	Wait   *int              `json:"wait"`
+	Header map[string]string `json:"-"`
 }
 
-func (r *Result) Set(args ...any) *Result {
-	return nil
+func (t *Result) Response(c *gin.Context, tmpl string) {
+	if t.Header != nil {
+		for k, v := range t.Header {
+			c.Header(k, v)
+		}
+	}
+	wait := 3
+	if t.Wait != nil {
+		wait = *t.Wait
+	}
+	c.HTML(http.StatusOK, tmpl, gin.H{
+		"code": *t.Code,
+		"msg":  t.Msg,
+		"data": t.Data,
+		"url":  t.Url,
+		"wait": wait,
+	})
 }
 
 // Success 操作成功跳转的快捷方法
@@ -40,28 +61,12 @@ func (r *Result) Set(args ...any) *Result {
 //	void
 //
 // throws HttpResponseException
-func (j *Jump) Success(c *gin.Context, args ...any) *Result {
-	//res := new(Result).Set(args)
-	res := &Result{
-		Code:       1,
-		Msg:        "",
-		Time:       time.Now().Unix(),
-		Data:       nil,
-		Statuscode: http.StatusOK,
-		Type:       "json",
-	}
-	if gin.IsDebugging() {
-		res.CostTime = time.Now().Unix() - c.GetInt64("startTime")
-	}
-	if len(args) > 0 {
-		if msg, ok := args[0].(string); ok {
-			res.Msg = msg
-		}
-	}
-	if len(args) > 1 {
-		res.Data = args[1]
-	}
-	panic(res)
+func (j *Jump) Success(c *gin.Context, args ...any) {
+	result := defaultResult(args)
+	defaultCode := DefaultCodeSuccess
+	result.Code = &defaultCode
+	result.Response(c, Config.Viper().DispatchSuccessTmpl)
+	panic(exception.HttpResponseException)
 }
 
 // Error 操作错误跳转的快捷方法
@@ -79,25 +84,65 @@ func (j *Jump) Success(c *gin.Context, args ...any) *Result {
 //
 // throws HttpResponseException
 func (j *Jump) Error(c *gin.Context, args ...any) {
-	res := &Result{
-		Code:       0,
-		Msg:        "",
-		Time:       time.Now().Unix(),
-		Data:       nil,
-		Statuscode: http.StatusOK,
-		Type:       "json",
-	}
+	result := defaultResult(args...)
+	defaultCode := DefaultCodeError
+	result.Code = &defaultCode
+	result.Response(c, Config.Viper().DispatchErrorTmpl)
+	panic(exception.HttpResponseException)
+}
+
+// Result 返回封装后的 API 数据到客户端
+// 参数:
+//
+//	要返回的数据: data
+//	返回的 code: code
+//	提示信息: msg
+//	返回数据格式: type
+//	发送的 Header 信息: header
+//
+// 返回值:
+//
+//	void
+//
+// throws HttpResponseException
+func (j *Jump) Result(c *gin.Context, data any, code *int, msg string, types string, header map[string]string) {
+	panic(exception.HttpResponseException)
+}
+
+func defaultResult(args ...any) *Result {
+	var msg string
+	var url string
+	var data any
+	var wait *int
+	header := make(map[string]string)
 	if len(args) > 0 {
-		if msg, ok := args[0].(string); ok {
-			res.Msg = msg
+		if arg0, ok := args[0].(string); ok {
+			msg = arg0
 		}
 	}
 	if len(args) > 1 {
-		res.Data = args[1]
+		if arg1, ok := args[1].(string); ok {
+			url = arg1
+		}
 	}
-	if gin.IsDebugging() {
-		res.CostTime = time.Now().UnixMilli() - c.GetInt64("startTime")
+	if len(args) > 2 {
+		data = args[2]
 	}
-	c.JSON(http.StatusOK, res)
-	panic(exception.HttpResponseException)
+	if len(args) > 3 {
+		if arg3, ok := args[3].(*int); ok {
+			wait = arg3
+		}
+	}
+	if len(args) > 4 {
+		if arg4, ok := args[4].(map[string]string); ok {
+			header = arg4
+		}
+	}
+	return &Result{
+		Msg:    msg,
+		Data:   data,
+		Url:    url,
+		Wait:   wait,
+		Header: header,
+	}
 }

@@ -2,185 +2,232 @@ package multi
 
 import (
 	"fmt"
+	"gota/pkg/template/parse"
 	"html/template"
 	"io"
 	"io/fs"
+	"iter"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
-	tTemplate "text/template"
-	"time"
+	"sync"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/gin-gonic/gin/render"
 )
 
-var globalFuncMap = template.FuncMap{
-	"htmlentities": tTemplate.HTMLEscaper, // 将字符转换为 HTMLProduction 转义字符
-	"html_entity_decode": func(str string) template.HTML { // 字符串转化为html标签
-		return template.HTML(str)
-	},
-	"timestamp": func(t ...any) int64 {
-		if len(t) > 0 {
-			if tm, ok := t[0].(time.Time); ok {
-				return tm.Unix()
-			}
-		}
-		return time.Now().Unix()
-	},
-	"date": func(t int64, format string) string {
-		if format == "" {
-			format = time.DateTime
-		}
-		if t == 0 {
-			return time.Now().Format(format)
-		}
-		return time.Unix(t, 0).Format(format)
-	},
-	"default": func(defaultValue string, value any) string {
-		if value == nil || value == "" {
-			return defaultValue
-		}
-		if s, ok := value.(string); ok && s == "" {
-			return defaultValue
-		}
-		return fmt.Sprintf("%v", value)
-	},
+var (
+	globalFuncMap  template.FuncMap
+	globalReplaces map[string]string
+	globalDelims   = render.Delims{Left: "{{", Right: "}}"}
+)
+
+func SetFuncMap(funcMap template.FuncMap) {
+	globalFuncMap = funcMap
 }
 
-// 设置最大递归深度
-const maxDepth = 10
+func SetReplaces(replaces map[string]string) {
+	globalReplaces = replaces
+}
 
-// 模板匹配正则表达式，用于提取模板中的子模板引用
-var templateRegex = regexp.MustCompile(`{{ *template +["'](.*?)(?:["'].*?)?}}`)
+func SetDelims(delims render.Delims) {
+	globalDelims = delims
+}
+
+func New(debug bool) IRender {
+	funcMap := globalFuncMap
+
+	if debug {
+		return &HTMLDebug{
+			Prefix:  "[GIN-debug] ",
+			FuncMap: funcMap,
+		}
+	}
+	return &HTMLProduction{
+		html:    make(map[string]*template.Template),
+		FuncMap: funcMap,
+	}
+}
 
 // IRender 模板引擎公共接口
 type IRender interface {
-	LoadHTMLGlob(string)
-	Instance(string, interface{}) render.Render
-	SetPrefix(string)
-	SetDir(fs.FS)
-	SetFuncMap(template.FuncMap)
-	SetReplaces(map[string]string)
-	SetDelims(render.Delims)
-	SetScopeFuncMap(ScopeFuncMap)
-	readFileOS(string) (string, string, error)
+	Init() IRender
+	LoadHTMLFile(string)
+	LoadHTMLGlob(fs.FS, string)
+	Seq2() iter.Seq2[string, *Tpl]
+	Instance(string, any) render.Render
 }
 
 // Tpl 模板结构体，包含模板名称和内容
 type Tpl struct {
+	dir     fs.FS
 	Name    string // 模板名称
-	Content string // 模板内容
-}
-type Option func(IRender)
-
-type ScopeFuncMap func(string, template.FuncMap) (string, template.FuncMap)
-
-func WithPrefix(prefix string) Option {
-	return func(r IRender) {
-		r.SetPrefix(prefix)
-	}
-}
-func WithDir(dir fs.FS) Option {
-	return func(r IRender) {
-		r.SetDir(dir)
-	}
-}
-func WithDelims(delims render.Delims) Option {
-	return func(r IRender) {
-		r.SetDelims(delims)
-	}
-}
-func WithReplaces(replaces map[string]string) Option {
-	return func(r IRender) {
-		r.SetReplaces(replaces)
-	}
+	funcMap template.FuncMap
+	once    sync.Once
 }
 
-func WithFuncMap(funcMap template.FuncMap) Option {
-	return func(r IRender) {
-		r.SetFuncMap(funcMap)
-	}
-}
-func WithScopeFuncMap(scopeFuncMap ScopeFuncMap) Option {
-	return func(r IRender) {
-		r.SetScopeFuncMap(scopeFuncMap)
-	}
-}
-
-func Render(debug bool, opts ...Option) (r IRender) {
-	defDelims := render.Delims{Left: "{{", Right: "}}"}
-	defDir := os.DirFS("./internal")
-	if debug {
-		r = &HTMLDebug{
-			delims:  defDelims,
-			dir:     defDir,
-			funcMap: make(template.FuncMap),
+func (t *Tpl) SetFuncMap(name string, fun any) {
+	t.once.Do(func() {
+		if t.funcMap == nil {
+			t.funcMap = make(template.FuncMap)
 		}
+	})
+	t.funcMap[name] = fun
+}
+
+// DOMParser 解析html文件
+func DOMParser(templ *template.Template, file string, templates []*Tpl, funcMap template.FuncMap, chains ...[]string) (*template.Template, error) {
+	// 检测循环依赖
+	chain, err := depCheck(file, chains)
+	if err != nil {
+		return nil, err
+	}
+
+	tpl, err := searchSlices(templates, file)
+
+	if err != nil {
+		return nil, err
+	}
+
+	name, s, err := readDirOS(tpl.dir, file, globalReplaces)
+
+	if err != nil {
+		return nil, fmt.Errorf("%s：%v\n", err, file)
+	}
+
+	if templ == nil {
+		templ = template.New(name)
 	} else {
-		r = &HTMLProduction{
-			templates: make(map[string]*template.Template),
-			delims:    defDelims,
-			dir:       defDir,
-			funcMap:   make(template.FuncMap),
+		templ = templ.New(name)
+	}
+
+	templ.Delims(globalDelims.Left, globalDelims.Right).Funcs(mergeSlices(globalFuncMap, funcMap, tpl.funcMap))
+
+	//分析模板继承关系
+	tree, err := parse.Parse(name, s, globalDelims.Left, globalDelims.Right)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse template: %v\n", err)
+	}
+
+	var parseErr error
+	for _, t := range tree {
+		inspect(t.Root, func(n parse.Node) bool {
+			if n == nil {
+				return false
+			}
+			switch node := n.(type) {
+			case *parse.BlockNode:
+				break
+			case *parse.TemplateNode:
+				_, e := DOMParser(templ, node.Name, templates, funcMap, chain)
+				if e != nil {
+					parseErr = e
+					return false
+				}
+			}
+			return true
+		})
+
+		if parseErr != nil {
+			break
 		}
 	}
-	for _, opt := range opts {
-		opt(r)
+
+	if parseErr != nil {
+		return nil, parseErr
 	}
-	return
+
+	_, err = templ.Parse(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse template: %v\n", err)
+	}
+
+	return templ, nil
 }
 
-// 收集模板
-func collect(str string, readFileOS func(string) (string, string, error)) (ts []*Tpl) {
-	visited := make(map[string]bool)
-	return deep(str, readFileOS, visited, 0, maxDepth)
+// depCheck 检测模板文件是否存在循环依赖
+func depCheck(file string, chains [][]string) ([]string, error) {
+	var chain []string
+	if len(chains) > 0 {
+		chain = make([]string, len(chains[0]))
+		copy(chain, chains[0])
+	}
+
+	for _, calledFile := range chain {
+		if calledFile == file {
+			cyclePath := strings.Join(append(chain, file), " -> ")
+			return nil, fmt.Errorf("circular template dependency detected: %s", cyclePath)
+		}
+	}
+
+	chain = append(chain, file)
+	return chain, nil
 }
 
-// deepDep 内部递归函数，使用访问记录和深度限制防止循环
-func deep(str string, readFileOS func(string) (string, string, error), visited map[string]bool, currentDepth, maxDepth int) (ts []*Tpl) {
-	// 检查递归深度
-	if currentDepth >= maxDepth {
+// inspect 获取模板节点
+func inspect(node parse.Node, f func(parse.Node) bool) {
+	if !f(node) {
 		return
 	}
-
-	// 查找模板中引用的子模板
-	templateMatches := templateRegex.FindAllStringSubmatch(str, -1)
-	for _, match := range templateMatches {
-		if len(match) > 1 {
-			filename := match[1] // 获取子模板文件名
-
-			// 检查是否已访问过此模板，防止循环引用
-			if visited[filename] {
-				continue
+	switch n := node.(type) {
+	case *parse.ListNode:
+		if n.Nodes != nil {
+			for _, child := range n.Nodes {
+				inspect(child, f)
 			}
-
-			visited[filename] = true // 标记为已访问
-
-			name, s, err := readFileOS(filename)
-			if err != nil {
-				// 如果文件读取失败，移除访问标记，允许其他路径尝试
-				delete(visited, filename)
-				continue
-			}
-
-			// 添加当前子模板
-			ts = append(ts, &Tpl{
-				Name:    name,
-				Content: s,
-			})
-
-			// 递归查找子模板的依赖（增加深度计数）
-			childDeps := deep(s, readFileOS, visited, currentDepth+1, maxDepth)
-			ts = append(ts, childDeps...)
 		}
 	}
-	return
 }
 
-func readFileOS(dir fs.FS, file string, replaces map[string]string) (name string, s string, err error) {
+// 加载文件
+func loadHTMLFile(filename string) *Tpl {
+	tpl := &Tpl{
+		dir:  nil,
+		Name: filename,
+	}
+	return tpl
+}
+
+// 加载文件夹下的文件 , 支持模糊匹配
+func loadHTMLGlob(fs fs.FS, pattern string) []*Tpl {
+	filenames, err := doublestar.Glob(fs, pattern)
+	if err != nil {
+		panic(err)
+	}
+	if len(filenames) == 0 {
+		panic(fmt.Errorf("html/template: pattern matches no files: %#q", pattern))
+	}
+	var templates []*Tpl
+	for _, filename := range filenames {
+		templates = append(templates, &Tpl{
+			dir:  fs,
+			Name: filename,
+		})
+	}
+	return templates
+}
+
+// 遍历已加载的模板
+func seq2(templates []*Tpl) iter.Seq2[string, *Tpl] {
+	return func(yield func(string, *Tpl) bool) {
+		for _, tpl := range templates {
+			if !yield(tpl.Name, tpl) {
+				return
+			}
+		}
+	}
+}
+
+// 读取模板文件
+func readDirOS(dir fs.FS, file string, replacess ...map[string]string) (name string, s string, err error) {
 	name = filepath.ToSlash(file) // 统一路径分隔符
-	f, err := dir.Open(file)
+	var f fs.File
+	if dir == nil {
+		f, err = os.Open(file)
+	} else {
+		f, err = dir.Open(file)
+	}
 	if err != nil {
 		return
 	}
@@ -191,8 +238,30 @@ func readFileOS(dir fs.FS, file string, replaces map[string]string) (name string
 	}
 	s = string(b)
 	// 根据替换映射替换内容
-	for o, n := range replaces {
-		s = strings.ReplaceAll(s, strings.ToUpper(o), n)
+	if len(replacess) > 0 {
+		replaces := replacess[0]
+		for o, n := range replaces {
+			s = strings.ReplaceAll(s, o, n)
+		}
 	}
 	return
+}
+
+func mergeSlices(maps ...template.FuncMap) template.FuncMap {
+	merged := make(template.FuncMap)
+	for _, m := range maps {
+		for k, v := range m {
+			merged[k] = v
+		}
+	}
+	return merged
+}
+
+func searchSlices(templates []*Tpl, name string) (*Tpl, error) {
+	for _, t := range templates {
+		if t.Name == name {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("template not found: %s", name)
 }

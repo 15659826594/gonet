@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Gonet框架",
+        "description": "Gota框架",
         "title": "OpenAPI",
         "termsOfService": "https://www.swagger.io/terms/",
         "contact": {},

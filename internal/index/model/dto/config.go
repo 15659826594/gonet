@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"gonet/pkg/database"
+	"gota/pkg/database"
 )
 
 type ConfigSiteDto struct {

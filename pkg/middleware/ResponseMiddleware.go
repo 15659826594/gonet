@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"gonet/pkg/exception"
+	"gota/pkg/exception"
 
 	"github.com/gin-gonic/gin"
 )

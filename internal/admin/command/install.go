@@ -3,10 +3,10 @@ package command
 import (
 	"database/sql"
 	"fmt"
-	"gonet/pkg"
-	"gonet/pkg/database"
-	"gonet/pkg/utils"
-	"gonet/pkg/utils/yaml"
+	"gota/pkg"
+	"gota/pkg/database"
+	"gota/pkg/utils"
+	"gota/pkg/utils/yaml"
 	"net/http"
 	"os"
 	"regexp"
@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gonet/pkg/utils/ini"
+	"gota/pkg/utils/ini"
 
 	"github.com/gin-gonic/gin"
 )

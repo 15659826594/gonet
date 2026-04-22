@@ -7,7 +7,6 @@ import (
 )
 
 // IsNil 检查给定的值是否为nil
-// 支持指针、切片、映射、通道、函数和接口类型
 func IsNil(v any) bool {
 	if v == nil {
 		return true
@@ -15,8 +14,21 @@ func IsNil(v any) bool {
 
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
+	// 引用类型
 	case reflect.Ptr, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func, reflect.Interface:
 		return rv.IsNil()
+		// 值类型
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64, reflect.Bool, reflect.String:
+		// 非引用类型，检查是否为零值
+		return reflect.DeepEqual(v, reflect.Zero(rv.Type()).Interface())
+		// 值类型(数组)
+	case reflect.Array:
+		return rv.Len() == 0
+		// 结构体是值类型，检查所有字段是否为零值
+	case reflect.Struct:
+		return reflect.DeepEqual(v, reflect.Zero(rv.Type()).Interface())
 	default:
 		return false
 	}

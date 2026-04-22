@@ -2,8 +2,8 @@ package route
 
 import (
 	"fmt"
-	"gonet/pkg"
-	"gonet/pkg/utils"
+	"gota/pkg"
+	"gota/pkg/utils"
 	"net/http"
 	"path/filepath"
 	"reflect"
@@ -59,9 +59,11 @@ func Register(Struct any) {
 	relPath, _ := filepath.Rel(pkg.RootPath(), file)
 
 	controller := Controller{
-		File:         relPath,
-		Name:         t.Name(),
-		Method:       []string{http.MethodGet},
+		File: relPath,
+		Name: t.Name(),
+		// PUT‌：用于‌全量替换‌资源。客户端需发送整个资源的最新状态，服务器会用该请求体完全覆盖原有资源
+		// PATCH‌：用于‌部分更新‌资源。客户端仅需发送需要修改的字段或一组修改指令，服务器根据这些指令对现有资源进行局部调整
+		Method:       []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut, http.MethodPatch},
 		HandlersFunc: []gin.HandlerFunc{},
 	}
 
@@ -137,7 +139,7 @@ func Build(e *gin.Engine, moduleGroup func(name string) (*gin.RouterGroup, strin
 					clonedChains := []gin.HandlerFunc{func(c *gin.Context) {
 						c.Set("startTime", time.Now().UnixMilli())
 						traceId, _ := uuid.NewV7()
-						c.Set("traceId", traceId)
+						c.Set("traceId", traceId.String())
 						c.Writer.Header().Set("X-Trace-Id", traceId.String())
 						c.Set("modulename", utils.CaseSnake(modulename))
 						c.Set("controllername", utils.CaseSnake(controller.Name))

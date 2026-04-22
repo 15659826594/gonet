@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"gonet/internal/common/controller"
-	"gonet/pkg/app/route"
+	"gota/internal/common/controller"
+	"gota/pkg/app/route"
 
 	"github.com/gin-gonic/gin"
 )

@@ -16,7 +16,7 @@ externalDocs:
 host: 127.0.0.1:8080
 info:
   contact: {}
-  description: Gonet框架
+  description: Gota框架
   termsOfService: https://www.swagger.io/terms/
   title: OpenAPI
   version: "1.0"

@@ -3,7 +3,7 @@ package i18n
 import (
 	"encoding/json"
 	"fmt"
-	"gonet/pkg"
+	"gota/pkg"
 	"os"
 	"path/filepath"
 	"runtime"

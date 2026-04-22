@@ -1,8 +1,8 @@
-{__NOLAYOUT__}<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>{:__('Warning')}</title>
+    <title>{{__ "Warning" }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="__CDN__/assets/img/favicon.ico" />
     <style type="text/css">
@@ -27,25 +27,28 @@
     </style>
 </head>
 <body>
-{php}$codeText=$code == 1 ? 'success' : ($code == 0 ? 'error' : 'info');{/php}
-<div class="system-message {$codeText}">
+{{ $codeText := "success" }}
+{{ if eq .code 0 }}
+    {{ $codeText = "error" }}
+{{ end }}
+<div class="system-message {{ $codeText }}">
     <div class="image">
-        <img src="__CDN__/assets/img/{$codeText}.svg" alt="" width="120" />
+        <img src="__CDN__/assets/img/{{ $codeText }}.svg" alt="" width="120" />
     </div>
-    <h1>{$msg}</h1>
-    {if $url}
+    <h1>{{ .msg }}</h1>
+    {{ if ne .url "" }}
         <p class="jump">
-            {:__('This page will be re-directed in %s seconds', '<span id="wait">' . $wait . '</span>')}
+            {{ html_entity_decode (__ (printf "This page will be re-directed in %s seconds" (printf "<span id=\"wait\"> %d </span>" .wait)))}}
         </p>
-    {/if}
+    {{ end }}
     <p class="clearfix">
-        <a href="__PUBLIC__" class="btn btn-grey">{:__('Go back')}</a>
-        {if $url}
-            <a id="href" href="{$url|htmlentities}" class="btn btn-primary">{:__('Jump now')}</a>
-        {/if}
+        <a href="__PUBLIC__" class="btn btn-grey">{{__ "Go back"}}</a>
+        {{if ne .url ""}}
+            <a id="href" href="{{ .url|htmlentities }}" class="btn btn-primary">{{__ "Jump now"}}</a>
+        {{end}}
     </p>
 </div>
-{if $url}
+{{if ne .url ""}}
     <script type="text/javascript">
         (function () {
             var wait = document.getElementById('wait'),
@@ -59,6 +62,6 @@
             }, 1000);
         })();
     </script>
-{/if}
+{{end}}
 </body>
 </html>

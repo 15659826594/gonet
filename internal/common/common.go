@@ -2,10 +2,10 @@ package common
 
 import (
 	"errors"
-	"gonet/internal/common/model"
-	"gonet/pkg/database"
-	"gonet/pkg/exception"
-	"gonet/pkg/utils"
+	"gota/internal/common/model"
+	"gota/pkg/database"
+	"gota/pkg/exception"
+	"gota/pkg/utils"
 	"net/http"
 	"slices"
 	"time"

@@ -1,7 +1,7 @@
 package vo
 
 import (
-	"gonet/internal/index/model/dto"
+	"gota/internal/index/model/dto"
 )
 
 type ConfigSiteVo struct {

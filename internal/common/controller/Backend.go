@@ -1,10 +1,16 @@
 package controller
 
-import "github.com/gin-gonic/gin"
+import (
+	"fmt"
+
+	"github.com/gin-gonic/gin"
+)
 
 type Backend struct {
 }
 
-func (c Backend) Initialize() gin.HandlerFunc {
-	return func(c *gin.Context) {}
+func (t *Backend) Initialize() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		fmt.Println(" Backend Initialize")
+	}
 }

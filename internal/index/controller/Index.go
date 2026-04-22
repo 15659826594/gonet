@@ -1,9 +1,12 @@
 package controller
 
 import (
-	"gonet/internal/common/controller"
-	"gonet/pkg/app/route"
+	"gota/internal/common/controller"
+	"gota/pkg/app/route"
+	"gota/pkg/logger"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,15 +23,32 @@ type Index struct {
 	NoNeedLogin []string
 	NoNeedRight []string
 }
+type Product struct {
+	ID    int
+	Name  string
+	Price float64
+}
 
 func (t *Index) Index() (gin.HandlerFunc, []string, []string) {
 	return func(c *gin.Context) {
-		//siteViper, _ := Config.Get("site")
-		//t.View.Fetch()
-		//c.HTML(http.StatusOK, "index/view/index/index.html", gin.H{
-		//	"site": siteViper.AllSettings(),
-		//	"U":    c.GetString("url"),
-		//})
+		logger.RecordAttrs(c, slog.LevelInfo, "携带上下文",
+			slog.String("method", "GET"),
+			slog.String("path", "/api/users"),
+			slog.Duration("duration", time.Since(time.Now())))
+
+		product := Product{ID: 1, Name: "商品A", Price: 99.9}
+
+		// 方式1: Any
+		logger.RecordAttrs(c, slog.LevelInfo, "商品信息", slog.Any("product", product))
+
+		// 方式2: Group
+		logger.RecordAttrs(c, slog.LevelInfo, "商品信息",
+			slog.Group("product",
+				slog.Int("id", product.ID),
+				slog.String("name", product.Name),
+				slog.Float64("price", product.Price),
+			),
+		)
 		t.View.Fetch(c)
 	}, []string{"index", "/"}, []string{http.MethodGet}
 }

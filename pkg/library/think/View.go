@@ -22,7 +22,9 @@ type View struct {
 func (t *View) Assign(c *gin.Context, name any, value ...any) *View {
 	sm := c.GetStringMap("__data__")
 	if sm == nil {
-		sm = map[string]any{}
+		sm = map[string]any{
+			"_": c,
+		}
 	}
 	switch v := name.(type) {
 	case map[string]any:

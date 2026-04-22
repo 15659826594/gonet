@@ -2,8 +2,8 @@ package database
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
+	"gota/pkg/config"
 	"log"
 	"os"
 	"sync"
@@ -24,18 +24,16 @@ var (
 
 func Gorm(configs ...*Database) *gorm.DB {
 	once.Do(func() {
-		//dbViper, err := config.SetConfigFile("database", "pkg/database/config.yaml")
-		//if err != nil {
-		//	log.Fatalf("Failed to load database configuration: %v", err)
-		//}
-
-		// 初始化gorm
-		//database.Gorm(new(database.Database).Viper(dbViper))
-		var err error
+		var cfg *Database
 		if len(configs) < 1 {
-			log.Fatalf("database initialization failed: %v", errors.New("configuration is required"))
+			dbViper, err := config.SetConfigFile("database", "pkg/database/config.yaml")
+			if err != nil {
+				log.Fatalf("Failed to load database configuration: %v", err)
+			}
+			cfg = new(Database).Viper(dbViper)
+		} else {
+			cfg = configs[0]
 		}
-		c := configs[0]
 
 		loggerConfig := logger.Config{
 			SlowThreshold:             time.Millisecond * 100, // 慢速 SQL 阈值 (100毫秒)
@@ -49,35 +47,35 @@ func Gorm(configs ...*Database) *gorm.DB {
 			loggerConfig.LogLevel = logger.Info
 			loggerConfig.ParameterizedQueries = true
 		}
-
-		instance, err = gorm.Open(mysql.Open(c.GetDsn()), &gorm.Config{
+		var err error
+		instance, err = gorm.Open(mysql.Open(cfg.GetDsn()), &gorm.Config{
 			QueryFields:            true, // select 字段 而不是 select *
 			SkipDefaultTransaction: true, // 禁用全局事务
 			NamingStrategy: schema.NamingStrategy{
-				TablePrefix:   c.Prefix, // 为所有表添加前缀
-				SingularTable: true,     // 禁用复数表名
+				TablePrefix:   cfg.Prefix, // 为所有表添加前缀
+				SingularTable: true,       // 禁用复数表名
 			},
 			Logger: logger.New(
 				log.New(os.Stdout, "\r\n", log.LstdFlags), // 输出到控制台
 				loggerConfig,
 			),
 		})
-		prefix = c.Prefix
+		prefix = cfg.Prefix
 		if err != nil {
 			log.Fatalf("failed to connect to database: %v", err)
 		}
 		sqlDB, err := instance.DB()
 		if err == nil {
-			if c.MaxOpenConns != 0 {
-				sqlDB.SetMaxOpenConns(c.MaxOpenConns)
+			if cfg.MaxOpenConns != 0 {
+				sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 			}
-			if c.MaxIdleConns != 0 {
-				sqlDB.SetMaxIdleConns(c.MaxIdleConns)
+			if cfg.MaxIdleConns != 0 {
+				sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 			}
-			if c.ConnMaxLifetime == 0 {
-				c.ConnMaxLifetime = getLifetime(sqlDB)
+			if cfg.ConnMaxLifetime == 0 {
+				cfg.ConnMaxLifetime = getLifetime(sqlDB)
 			}
-			sqlDB.SetConnMaxLifetime(time.Second * time.Duration(c.ConnMaxLifetime))
+			sqlDB.SetConnMaxLifetime(time.Second * time.Duration(cfg.ConnMaxLifetime))
 		}
 	})
 	return instance
