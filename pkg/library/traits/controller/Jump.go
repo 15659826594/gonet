@@ -2,7 +2,6 @@ package controller
 
 import (
 	Config "gota/pkg/config"
-	"gota/pkg/exception"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -66,7 +65,7 @@ func (j *Jump) Success(c *gin.Context, args ...any) {
 	defaultCode := DefaultCodeSuccess
 	result.Code = &defaultCode
 	result.Response(c, Config.Viper().DispatchSuccessTmpl)
-	panic(exception.HttpResponseException)
+	panic(struct{}{})
 }
 
 // Error 操作错误跳转的快捷方法
@@ -88,7 +87,7 @@ func (j *Jump) Error(c *gin.Context, args ...any) {
 	defaultCode := DefaultCodeError
 	result.Code = &defaultCode
 	result.Response(c, Config.Viper().DispatchErrorTmpl)
-	panic(exception.HttpResponseException)
+	panic(struct{}{})
 }
 
 // Result 返回封装后的 API 数据到客户端
@@ -106,7 +105,7 @@ func (j *Jump) Error(c *gin.Context, args ...any) {
 //
 // throws HttpResponseException
 func (j *Jump) Result(c *gin.Context, data any, code *int, msg string, types string, header map[string]string) {
-	panic(exception.HttpResponseException)
+	panic(struct{}{})
 }
 
 func defaultResult(args ...any) *Result {

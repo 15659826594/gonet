@@ -3,7 +3,6 @@ package controller
 import (
 	"fmt"
 	"gota/internal/common/library/Auth"
-	"gota/pkg/exception"
 	"strings"
 	"time"
 
@@ -153,7 +152,7 @@ func (*Api) Result(c *gin.Context, msg string, data any, code *int, t string, he
 		t = ResponseTypeJSON
 	}
 	ResponseCreate(c, result, t, code, header)
-	panic(exception.HttpResponseException)
+	panic(struct{}{})
 }
 
 func ResponseCreate(c *gin.Context, result map[string]any, t string, code *int, header map[string]string) {

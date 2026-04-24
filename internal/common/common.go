@@ -4,7 +4,6 @@ import (
 	"errors"
 	"gota/internal/common/model"
 	"gota/pkg/database"
-	"gota/pkg/exception"
 	"gota/pkg/utils"
 	"net/http"
 	"slices"
@@ -22,10 +21,6 @@ type Result struct {
 	Statuscode int            `json:"-"`
 	Type       string         `json:"-"`
 	Header     map[string]any `json:"-"`
-}
-
-func (r *Result) Exception() error {
-	return exception.HttpResponseException
 }
 
 func (r *Result) WithCode(code int) *Result {

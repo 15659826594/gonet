@@ -95,8 +95,6 @@ func Middleware() gin.HandlerFunc {
 		c.Set("spanId", spanId)
 		c.Writer.Header().Set("X-Trace-Id", traceId)
 		c.Writer.Header().Set("X-Span-Id", spanId)
-		fmt.Println("我是链路追踪开始", traceId, spanId)
 		c.Next()
-		fmt.Println("我是链路追踪结束", traceId, spanId)
 	}
 }

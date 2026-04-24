@@ -1,9 +1,6 @@
 package middleware
 
 import (
-	"errors"
-	"gota/pkg/exception"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,11 +12,9 @@ func ResponseHandler() gin.HandlerFunc {
 			if rec == nil {
 				return
 			}
-			if err, ok := rec.(error); ok {
-				if ok := errors.Is(err, exception.HttpResponseException); ok {
-					c.Abort()
-					return
-				}
+			if _, ok := rec.(struct{}); ok {
+				c.Abort()
+				return
 			}
 			panic(rec)
 		}()
