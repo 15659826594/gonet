@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-// CorsMiddleware 设置允许跨域
-func CorsMiddleware() gin.HandlerFunc {
+// Cors 设置允许跨域
+func Cors() gin.HandlerFunc {
 	// 开发环境全部放行
 	if gin.IsDebugging() {
 		return func(c *gin.Context) {

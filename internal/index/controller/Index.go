@@ -40,7 +40,7 @@ func (t *Index) Index() (gin.HandlerFunc, []string, []string) {
 
 		// 方式1: Any
 		logger.RecordAttrs(c, slog.LevelInfo, "商品信息", slog.Any("product", product))
-
+		slog.Info("111")
 		// 方式2: Group
 		logger.RecordAttrs(c, slog.LevelInfo, "商品信息",
 			slog.Group("product",

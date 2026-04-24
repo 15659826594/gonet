@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 var controllers []Controller
@@ -138,9 +137,6 @@ func Build(e *gin.Engine, moduleGroup func(name string) (*gin.RouterGroup, strin
 					path = filepath.ToSlash(utils.CaseSnake(path))
 					clonedChains := []gin.HandlerFunc{func(c *gin.Context) {
 						c.Set("startTime", time.Now().UnixMilli())
-						traceId, _ := uuid.NewV7()
-						c.Set("traceId", traceId.String())
-						c.Writer.Header().Set("X-Trace-Id", traceId.String())
 						c.Set("modulename", utils.CaseSnake(modulename))
 						c.Set("controllername", utils.CaseSnake(controller.Name))
 						c.Set("actionname", utils.CaseSnake(action.Name))

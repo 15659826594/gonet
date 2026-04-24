@@ -7,12 +7,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AuthMiddleware(c *gin.Context) {
+func Auth(c *gin.Context) {
 
 }
 
-func FastAuthMiddleware(c *gin.Context) {
-	token := GinContextGetToken(c)
+func FastAuth(c *gin.Context) {
+	token := parseToken(c)
 	if token == "" {
 		Response(Error("请登陆后操作"))
 	}
@@ -24,7 +24,7 @@ func FastAuthMiddleware(c *gin.Context) {
 	c.Next()
 }
 
-func GinContextGetToken(c *gin.Context) string {
+func parseToken(c *gin.Context) string {
 	var token string
 	// 1. 从Header中获取token
 	authHeader := c.GetHeader("Authorization")
