@@ -1,0 +1,1 @@
+<script src="__CDN__/assets/js/require{{if eq .Think.config.app_debug false}}.min{{end}}.js" data-main="__CDN__/assets/js/require-frontend{{if eq .Think.config.app_debug false}}.min{{end}}.js?v={{.Think.config.site.version|htmlentities}}"></script>

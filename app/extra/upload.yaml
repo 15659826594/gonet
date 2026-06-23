@@ -1,0 +1,12 @@
+# 上传配置
+uploadurl: ajax/upload  # 上传地址,默认是本地上传
+cdnurl: ''              # CDN地址
+savekey: /uploads/{year}{mon}{day}/{filemd5}{.suffix}  # 文件保存格式
+maxsize: 10mb           # 最大可上传大小
+mimetype: [jpg,png,bmp,jpeg,gif,webp,zip,rar,wav,mp4,mp3,webm]  # 可上传的文件类型
+multiple: false         # 是否支持批量上传
+timeout: 60000          # 上传超时时长，这里仅用于JS上传超时控制
+chunking: false         # 是否支持分片上传
+chunksize: 2097152      # 默认分片大小
+fullmode: false         # 完整URL模式
+thumbstyle: ''          # 缩略图样式

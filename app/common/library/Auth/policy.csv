@@ -1,0 +1,8 @@
+p, admin, /index, GET
+p, admin, /home, GET
+p, admin, /users, GET
+p, admin, /users, POST
+p, yunwei, /index, GET
+p, yunwei, /home, GET
+g, zhangsan, admin
+g, wangwu, yunwei
